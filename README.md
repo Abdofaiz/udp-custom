@@ -5,7 +5,7 @@ UDP (User Datagram Protocol) is a network communication protocol that operates o
 
 
 ---
-<center><img src="https://raw.githubusercontent.com/http-custom/udp-custom/main/bin/banner.jpg" alt="banner" width="400"/></center>
+<center><img src="https://raw.githubusercontent.com/Abdofaiz/udp-custom/main/bin/banner.jpg" alt="banner" width="400"/></center>
 
 # Supported OS
 - ubuntu 20.04 [x86_64] ✅ _(recommended)_
@@ -16,7 +16,7 @@ UDP (User Datagram Protocol) is a network communication protocol that operates o
 sudo -s
 ``` 
 ```
-git clone https://github.com/http-custom/udp-custom && cd udp-custom && chmod +x install.sh && ./install.sh
+git clone https://github.com/Abdofaiz/udp-custom && cd udp-custom && chmod +x install.sh && ./install.sh
 ```
 
 
