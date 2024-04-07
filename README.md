@@ -28,7 +28,7 @@ git clone https://github.com/Abdofaiz/udp-custom && cd udp-custom && chmod +x in
  * Optional port exclude separated by coma, ex. 53,5300
 
 ## telegram
- > [magnu](https://t.me/abdofaiz)
+ > [magnu](https://t.me/abdofaiz1997)
 
 #
   > _made from pieces with ❤️_
