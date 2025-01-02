@@ -1,13 +1,15 @@
 [Unit]
-Description=UDP Custom by faiz
+Description=UDP Custom Service
+After=network.target
 
 [Service]
-User=root
 Type=simple
-ExecStart=/root/udp/udp-custom server
-WorkingDirectory=/root/udp/
+User=root
+WorkingDirectory=/root
+ExecStart=/root/udp-custom
 Restart=always
-RestartSec=2s
+RestartSec=3
+LimitNOFILE=1000000
 
 [Install]
-WantedBy=default.target
+WantedBy=multi-user.target

@@ -1,8 +1,24 @@
 {
   "listen": ":36712",
-  "stream_buffer": 33554432,
-  "receive_buffer": 83886080,
-  "auth": {
-    "mode": "passwords"
+  "stream_buffer": 16384,
+  "receive_buffer": 8192,
+  "max_connections": 2000,
+  "timeout": 300,
+  "udp_gateway": "127.0.0.1:7300",
+  "logging": {
+    "enabled": true,
+    "level": "info",
+    "file": "/var/log/udp-custom.log"
+  },
+  "rate_limit": {
+    "enabled": true,
+    "connections_per_ip": 100,
+    "packets_per_second": 1000
+  },
+  "security": {
+    "allow_ip_ranges": [
+      "0.0.0.0/0"
+    ],
+    "block_ip_ranges": []
   }
 }
