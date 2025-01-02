@@ -37,7 +37,7 @@ add_user() {
     if grep -q "^$username:" $USER_DB; then
         echo -e "${RED}Error: User already exists${NC}"
         return 1
-    }
+    fi
 
     # Calculate expiry date
     expiry_date=$(date -d "+$duration days" +"%Y-%m-%d")
