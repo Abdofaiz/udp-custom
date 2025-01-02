@@ -52,11 +52,17 @@ install_services() {
     cp module/udp /usr/local/bin/udp
     chmod +x /usr/local/bin/udp
     
-    # Set proper permissions
+    # Set proper permissions and ownership
     chown -R root:root /etc/udp
+    chmod 755 /etc/udp
     chmod 644 /etc/udp/config.json
-    chmod 644 /etc/systemd/system/udp-custom.service
-    chmod 644 /etc/systemd/system/udpgw.service
+    chmod 755 /usr/local/bin/udp-custom
+    
+    # Ensure binary is in the correct location
+    if [ ! -f "/usr/local/bin/udp-custom" ]; then
+        cp bin/udp-custom-linux-amd64 /usr/local/bin/udp-custom
+        chmod +x /usr/local/bin/udp-custom
+    fi
     
     # Create log file
     touch /var/log/udp-custom.log

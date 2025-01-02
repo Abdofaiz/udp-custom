@@ -20,33 +20,5 @@
       "0.0.0.0/0"
     ],
     "block_ip_ranges": []
-  },
-  "excluded_ports": {
-    "ssh": [22, 443],
-    "openvpn": [1194, 2200, 990],
-    "stunnel": [443, 445, 777],
-    "dropbear": [443, 109, 143],
-    "squid": [3128, 8080],
-    "badvpn": [7100, 7200, 7300],
-    "nginx": [89],
-    "xray": {
-      "vmess_tls": [8443],
-      "vmess_nontls": [80],
-      "vless_tls": [8443],
-      "vless_nontls": [80],
-      "trojan": [2083]
-    },
-    "websocket": {
-      "tls": [443],
-      "nontls": [80],
-      "ovpn": [2086]
-    },
-    "ohp": {
-      "ssh": [8181],
-      "dropbear": [8282],
-      "openvpn": [8383]
-    },
-    "trojan_go": [2087],
-    "common_ports": [53, 5300, 444, 9090, 90]
   }
 }

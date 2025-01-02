@@ -31,6 +31,36 @@ verify_installation() {
     fi
 }
 
+# Add this function after verify_installation()
+debug_service() {
+    echo -e "\n${YELLOW}Debugging UDP Custom Service${NC}"
+    echo -e "----------------------------------------"
+    
+    # Check binary
+    if [ -x "$BINARY_PATH" ]; then
+        echo -e "Binary permissions: $(ls -l $BINARY_PATH)"
+    else
+        echo -e "${RED}Binary not executable!${NC}"
+    fi
+    
+    # Check config
+    if [ -r "$CONFIG_DIR/config.json" ]; then
+        echo -e "Config permissions: $(ls -l $CONFIG_DIR/config.json)"
+        echo -e "Config contents:"
+        cat "$CONFIG_DIR/config.json"
+    else
+        echo -e "${RED}Config not readable!${NC}"
+    fi
+    
+    # Check service definition
+    echo -e "\nService definition:"
+    cat "/etc/systemd/system/$SERVICE_NAME.service"
+    
+    # Check system logs
+    echo -e "\nSystem logs:"
+    journalctl -u $SERVICE_NAME -n 20 --no-pager
+}
+
 # Banner
 show_banner() {
     clear
@@ -145,6 +175,7 @@ show_menu() {
     echo -e " ${GREEN}[4]${NC} • Show Status"
     echo -e " ${GREEN}[5]${NC} • Show Logs"
     echo -e " ${GREEN}[6]${NC} • Change Port"
+    echo -e " ${GREEN}[7]${NC} • Debug Service"
     echo -e " ${GREEN}[0]${NC} • Exit"
     echo -e ""
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -164,6 +195,7 @@ main() {
             4) check_status ;;
             5) show_logs ;;
             6) change_port ;;
+            7) debug_service ;;
             0) exit 0 ;;
             *) echo -e "${RED}Invalid option!${NC}" ;;
         esac
