@@ -7,7 +7,7 @@
   "udp_gateway": "127.0.0.1:7300",
   "logging": {
     "enabled": true,
-    "level": "info",
+    "level": "debug",
     "file": "/var/log/udp-custom.log"
   },
   "rate_limit": {

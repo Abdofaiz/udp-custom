@@ -52,11 +52,23 @@ install_services() {
     cp module/udp /usr/local/bin/udp
     chmod +x /usr/local/bin/udp
     
-    # Set proper permissions and ownership
+    # Set correct SELinux context if applicable
+    if command -v semanage >/dev/null 2>&1; then
+        semanage fcontext -a -t bin_t "/usr/local/bin/udp-custom"
+        restorecon -v "/usr/local/bin/udp-custom"
+    fi
+    
+    # Ensure log directory exists with proper permissions
+    mkdir -p /var/log/udp-custom
+    chown root:root /var/log/udp-custom
+    chmod 755 /var/log/udp-custom
+    
+    # Set proper permissions
+    chown root:root /usr/local/bin/udp-custom
+    chmod 755 /usr/local/bin/udp-custom
     chown -R root:root /etc/udp
     chmod 755 /etc/udp
     chmod 644 /etc/udp/config.json
-    chmod 755 /usr/local/bin/udp-custom
     
     # Ensure binary is in the correct location
     if [ ! -f "/usr/local/bin/udp-custom" ]; then
