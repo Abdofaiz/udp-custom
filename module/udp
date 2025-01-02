@@ -23,12 +23,12 @@ verify_installation() {
     if [ ! -f "/etc/systemd/system/$SERVICE_NAME.service" ]; then
         echo -e "${RED}Error: Service file not found!${NC}"
         exit 1
-    }
+    fi
     
     if [ ! -f "$CONFIG_DIR/config.json" ]; then
         echo -e "${RED}Error: Configuration file not found!${NC}"
         exit 1
-    }
+    fi
 }
 
 # Banner
