@@ -6,10 +6,12 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/root
-ExecStart=/root/udp-custom
+ExecStart=/usr/local/bin/udp-custom
 Restart=always
 RestartSec=3
 LimitNOFILE=1000000
+StandardOutput=append:/var/log/udp-custom.log
+StandardError=append:/var/log/udp-custom.log
 
 [Install]
 WantedBy=multi-user.target

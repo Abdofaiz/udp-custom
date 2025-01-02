@@ -29,7 +29,11 @@ install_dependencies() {
 install_services() {
     log "Installing UDP services..."
     
-    # Copy binary
+    # Create necessary directories
+    mkdir -p /etc/udp
+    mkdir -p /var/log/udp-custom
+    
+    # Copy and set permissions for binary
     cp bin/udp-custom-linux-amd64 /usr/local/bin/udp-custom
     chmod +x /usr/local/bin/udp-custom
     
@@ -37,8 +41,7 @@ install_services() {
     cp config/udpgw.service /etc/systemd/system/
     cp config/udp-custom.service /etc/systemd/system/
     
-    # Create necessary directories
-    mkdir -p /etc/udp
+    # Copy configuration
     cp config/config.json /etc/udp/
     
     # Setup limiter
@@ -49,6 +52,16 @@ install_services() {
     cp module/udp /usr/local/bin/udp
     chmod +x /usr/local/bin/udp
     
+    # Set proper permissions
+    chown -R root:root /etc/udp
+    chmod 644 /etc/udp/config.json
+    chmod 644 /etc/systemd/system/udp-custom.service
+    chmod 644 /etc/systemd/system/udpgw.service
+    
+    # Create log file
+    touch /var/log/udp-custom.log
+    chmod 644 /var/log/udp-custom.log
+    
     # Reload systemd
     systemctl daemon-reload
 }
@@ -57,8 +70,19 @@ start_services() {
     log "Starting services..."
     systemctl enable udpgw
     systemctl enable udp-custom
-    systemctl start udpgw
-    systemctl start udp-custom
+    
+    log "Starting UDPGW service..."
+    systemctl start udpgw || log "Failed to start UDPGW service"
+    
+    log "Starting UDP Custom service..."
+    systemctl start udp-custom || log "Failed to start UDP Custom service"
+    
+    # Verify services
+    if systemctl is-active --quiet udp-custom; then
+        log "UDP Custom service started successfully"
+    else
+        log "UDP Custom service failed to start. Check logs with: journalctl -u udp-custom"
+    fi
 }
 
 main() {

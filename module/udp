@@ -11,6 +11,25 @@ NC='\033[0m'
 CONFIG_DIR="/etc/udp"
 SERVICE_NAME="udp-custom"
 LOGS_FILE="/var/log/udp-custom.log"
+BINARY_PATH="/usr/local/bin/udp-custom"
+
+# Add service verification
+verify_installation() {
+    if [ ! -f "$BINARY_PATH" ]; then
+        echo -e "${RED}Error: UDP Custom binary not found!${NC}"
+        exit 1
+    fi
+    
+    if [ ! -f "/etc/systemd/system/$SERVICE_NAME.service" ]; then
+        echo -e "${RED}Error: Service file not found!${NC}"
+        exit 1
+    }
+    
+    if [ ! -f "$CONFIG_DIR/config.json" ]; then
+        echo -e "${RED}Error: Configuration file not found!${NC}"
+        exit 1
+    }
+}
 
 # Banner
 show_banner() {
@@ -28,37 +47,70 @@ check_root() {
     fi
 }
 
-# Service status
+# Service status with enhanced checking
 check_status() {
+    verify_installation
+    
+    echo -e "Checking UDP Custom service status..."
+    echo -e "----------------------------------------"
+    
+    # Check binary
+    echo -e "Binary: $(if [ -f "$BINARY_PATH" ]; then echo -e "${GREEN}Found${NC}"; else echo -e "${RED}Not Found${NC}"; fi)"
+    
+    # Check configuration
+    echo -e "Config: $(if [ -f "$CONFIG_DIR/config.json" ]; then echo -e "${GREEN}Found${NC}"; else echo -e "${RED}Not Found${NC}"; fi)"
+    
+    # Check service status
     if systemctl is-active --quiet $SERVICE_NAME; then
-        echo -e "UDP Custom Status: ${GREEN}Running${NC}"
+        echo -e "Service: ${GREEN}Running${NC}"
         echo -e "Port: $(grep -oP '"listen": ":\K[0-9]+' $CONFIG_DIR/config.json)"
+        echo -e "Process: $(ps aux | grep udp-custom | grep -v grep)"
     else
-        echo -e "UDP Custom Status: ${RED}Not Running${NC}"
+        echo -e "Service: ${RED}Not Running${NC}"
+        echo -e "Last logs:"
+        journalctl -u $SERVICE_NAME -n 5 --no-pager
     fi
 }
 
-# Start service
+# Enhanced start service
 start_service() {
+    verify_installation
     echo -e "Starting UDP Custom service..."
     systemctl start $SERVICE_NAME
     sleep 2
+    if ! systemctl is-active --quiet $SERVICE_NAME; then
+        echo -e "${RED}Failed to start service. Checking logs:${NC}"
+        journalctl -u $SERVICE_NAME -n 10 --no-pager
+    else
+        echo -e "${GREEN}Service started successfully${NC}"
+    fi
     check_status
 }
 
-# Stop service
+# Enhanced stop service
 stop_service() {
     echo -e "Stopping UDP Custom service..."
     systemctl stop $SERVICE_NAME
     sleep 2
+    if systemctl is-active --quiet $SERVICE_NAME; then
+        echo -e "${RED}Failed to stop service${NC}"
+    else
+        echo -e "${GREEN}Service stopped successfully${NC}"
+    fi
     check_status
 }
 
-# Restart service
+# Enhanced restart service
 restart_service() {
     echo -e "Restarting UDP Custom service..."
     systemctl restart $SERVICE_NAME
     sleep 2
+    if ! systemctl is-active --quiet $SERVICE_NAME; then
+        echo -e "${RED}Failed to restart service. Checking logs:${NC}"
+        journalctl -u $SERVICE_NAME -n 10 --no-pager
+    else
+        echo -e "${GREEN}Service restarted successfully${NC}"
+    fi
     check_status
 }
 
