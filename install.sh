@@ -45,6 +45,10 @@ install_services() {
     cp module/limiter.sh /usr/local/bin/
     chmod +x /usr/local/bin/limiter.sh
     
+    # Install UDP command
+    cp module/udp /usr/local/bin/udp
+    chmod +x /usr/local/bin/udp
+    
     # Reload systemd
     systemctl daemon-reload
 }
