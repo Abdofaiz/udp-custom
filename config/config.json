@@ -5,6 +5,10 @@
   "max_connections": 2000,
   "timeout": 300,
   "udp_gateway": "127.0.0.1:7300",
+  "authentication": {
+    "enabled": true,
+    "user_db_file": "/etc/udp/users.db"
+  },
   "logging": {
     "enabled": true,
     "level": "debug",

@@ -1,0 +1,148 @@
+#!/bin/bash
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+# Configuration
+USER_DB="/etc/udp/users.db"
+USER_CONFIG="/etc/udp/users.conf"
+
+# Create necessary directories and files
+mkdir -p /etc/udp
+touch $USER_DB
+touch $USER_CONFIG
+
+# Banner
+show_banner() {
+    clear
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "                UDP Custom User Management"
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+}
+
+# Add user
+add_user() {
+    show_banner
+    echo -e "\n${GREEN}Add New User${NC}"
+    echo -e "━━━━━━━━━━━━━━━━━━━━"
+    read -p "Username : " username
+    read -p "Password : " password
+    read -p "Duration (days) : " duration
+
+    # Check if user exists
+    if grep -q "^$username:" $USER_DB; then
+        echo -e "${RED}Error: User already exists${NC}"
+        return 1
+    }
+
+    # Calculate expiry date
+    expiry_date=$(date -d "+$duration days" +"%Y-%m-%d")
+    
+    # Add user to database
+    echo "$username:$password:$expiry_date" >> $USER_DB
+    
+    echo -e "${GREEN}User added successfully${NC}"
+    echo -e "Username   : $username"
+    echo -e "Password   : $password"
+    echo -e "Expires on : $expiry_date"
+}
+
+# Delete user
+delete_user() {
+    show_banner
+    echo -e "\n${RED}Delete User${NC}"
+    echo -e "━━━━━━━━━━━━━━━━━━━━"
+    read -p "Username : " username
+
+    if grep -q "^$username:" $USER_DB; then
+        sed -i "/^$username:/d" $USER_DB
+        echo -e "${GREEN}User deleted successfully${NC}"
+    else
+        echo -e "${RED}Error: User not found${NC}"
+    fi
+}
+
+# List users
+list_users() {
+    show_banner
+    echo -e "\n${GREEN}User List${NC}"
+    echo -e "━━━━━━━━━━━━━━━━━━━━"
+    echo -e "Username\tPassword\tExpiry Date\tStatus"
+    echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    while IFS=: read -r user pass expiry; do
+        current_date=$(date +%s)
+        expiry_date=$(date -d "$expiry" +%s)
+        
+        if [ $current_date -gt $expiry_date ]; then
+            status="${RED}Expired${NC}"
+        else
+            status="${GREEN}Active${NC}"
+        fi
+        
+        echo -e "$user\t$pass\t$expiry\t$status"
+    done < $USER_DB
+}
+
+# Extend user validity
+extend_user() {
+    show_banner
+    echo -e "\n${YELLOW}Extend User Validity${NC}"
+    echo -e "━━━━━━━━━━━━━━━━━━━━"
+    read -p "Username : " username
+    read -p "Add days : " days
+
+    if grep -q "^$username:" $USER_DB; then
+        current_expiry=$(grep "^$username:" $USER_DB | cut -d: -f3)
+        new_expiry=$(date -d "$current_expiry +$days days" +"%Y-%m-%d")
+        sed -i "s|^$username:.*|$username:$(grep "^$username:" $USER_DB | cut -d: -f2):$new_expiry|" $USER_DB
+        echo -e "${GREEN}User validity extended successfully${NC}"
+        echo -e "New expiry date: $new_expiry"
+    else
+        echo -e "${RED}Error: User not found${NC}"
+    fi
+}
+
+# Main menu
+show_menu() {
+    show_banner
+    echo -e ""
+    echo -e " ${GREEN}[1]${NC} • Add User"
+    echo -e " ${GREEN}[2]${NC} • Delete User"
+    echo -e " ${GREEN}[3]${NC} • List Users"
+    echo -e " ${GREEN}[4]${NC} • Extend User"
+    echo -e " ${GREEN}[0]${NC} • Exit"
+    echo -e ""
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e ""
+}
+
+# Main function
+main() {
+    if [[ $EUID -ne 0 ]]; then
+        echo -e "${RED}This script must be run as root${NC}"
+        exit 1
+    fi
+
+    while true; do
+        show_menu
+        read -p "Select menu: " choice
+        case $choice in
+            1) add_user ;;
+            2) delete_user ;;
+            3) list_users ;;
+            4) extend_user ;;
+            0) exit 0 ;;
+            *) echo -e "${RED}Invalid option${NC}" ;;
+        esac
+        echo ""
+        read -p "Press enter to continue..."
+    done
+}
+
+# Execute main function
+main 

@@ -82,6 +82,17 @@ install_services() {
     
     # Reload systemd
     systemctl daemon-reload
+    
+    # Install user management
+    cp module/user-management /usr/local/bin/udp-user
+    chmod +x /usr/local/bin/udp-user
+    
+    # Create user database directory
+    mkdir -p /etc/udp
+    touch /etc/udp/users.db
+    touch /etc/udp/users.conf
+    chmod 644 /etc/udp/users.db
+    chmod 644 /etc/udp/users.conf
 }
 
 start_services() {
