@@ -1,35 +1,57 @@
-## UDP Custom - Installer and Manager
-#### * Version ⇢ 2.5-Lite
----
-UDP (User Datagram Protocol) is a network communication protocol that operates on top of IP (Internet Protocol). It is a simpler protocol compared to TCP (Transmission Control Protocol), as it aims for speed rather than reliability.
+# UDP Custom Docker
+UDP Custom installer with Docker support and gaming optimization
 
+## Features
+- BadVPN UDP ports (7100, 7200, 7300)
+- Gaming optimized (PUBG, FIFA)
+- Docker support
+- Auto-installation script
 
----
-<center><img src="https://raw.githubusercontent.com/Abdofaiz/udp-custom/main/bin/banner.jpg" alt="banner" width="400"/></center>
-
-# Supported OS
-- ubuntu 20.04 [x86_64] ✅ _(recommended)_
-- [arm] ❌
-
-## Install
+## Quick Install
+```bash
+curl -s https://raw.githubusercontent.com/abdofaiz/udp-custom-docker/main/install-docker.sh | sudo bash
 ```
+
+## Manual Install
+```bash
+# Get root access
 sudo -s
-``` 
+
+# Clone the repository
+git clone https://github.com/abdofaiz/udp-custom-docker.git
+
+# Go to directory
+cd udp-custom-docker
+
+# Make script executable
+chmod +x install-docker.sh
+
+# Run installer
+./install-docker.sh
 ```
-git clone https://github.com/Abdofaiz/udp-custom && cd udp-custom && chmod +x install.sh && ./install.sh
+
+## Ports
+- 36712 - Main UDP Custom port
+- 7300 - BadVPN UDP
+- 7100, 7200 - Gaming ports
+
+## Commands
+After installation, use these commands:
+```bash
+# Check service status
+docker ps
+
+# View logs
+docker logs udp-custom
+
+# Restart service
+docker restart udp-custom
 ```
 
+## Support
+- Ubuntu 20.04 (Recommended)
+- Debian 10+
+- Must have Docker support
 
-## Manually
-
-## Note: 
- * Use optional port exclude when port udp between 1-65535 already use by other udp tunnel, like badvpn, ovpn udp and other.
- * Edit path config /root/udp/config.json, after changing it then reboot
- * Optional port exclude separated by coma, ex. 53,5300
-
-## telegram
- > [magnu](https://t.me/abdofaiz)
-
-#
-  > _made from pieces with ❤️_
-#
+## Credits
+Modified by: Abdofaiz
