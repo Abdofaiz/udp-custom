@@ -114,12 +114,52 @@ start_services() {
     fi
 }
 
+# Add this function to optimize system
+optimize_system() {
+    log "Optimizing system for better UDP performance..."
+    
+    # TCP optimization
+    cat > /etc/sysctl.d/99-network-performance.conf <<EOL
+# TCP optimization
+net.ipv4.tcp_fastopen = 3
+net.ipv4.tcp_slow_start_after_idle = 0
+net.ipv4.tcp_rmem = 8192 87380 33554432
+net.ipv4.tcp_wmem = 8192 87380 33554432
+net.ipv4.tcp_congestion_control = bbr
+net.core.rmem_max = 33554432
+net.core.wmem_max = 33554432
+net.core.rmem_default = 1048576
+net.core.wmem_default = 1048576
+net.core.netdev_budget = 600
+net.core.netdev_budget_usecs = 20000
+
+# UDP optimization
+net.ipv4.udp_rmem_min = 8192
+net.ipv4.udp_wmem_min = 8192
+net.core.netdev_max_backlog = 100000
+net.ipv4.udp_mem = 8192 87380 33554432
+EOL
+
+    # Apply sysctl settings
+    sysctl -p /etc/sysctl.d/99-network-performance.conf
+    
+    # Enable BBR
+    if ! grep -q "tcp_bbr" /etc/modules-load.d/modules.conf; then
+        echo "tcp_bbr" >> /etc/modules-load.d/modules.conf
+    fi
+    modprobe tcp_bbr
+    
+    # Set BBR as default TCP congestion control
+    echo "bbr" > /proc/sys/net/ipv4/tcp_congestion_control
+}
+
 main() {
     check_root
     log "Starting installation..."
     
     install_dependencies
     install_services
+    optimize_system
     start_services
     
     log "Installation completed successfully!"

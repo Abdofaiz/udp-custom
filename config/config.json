@@ -1,23 +1,38 @@
 {
   "listen": ":36712",
-  "stream_buffer": 33554432,
-  "receive_buffer": 33554432,
+  "stream_buffer": 67108864,
+  "receive_buffer": 67108864,
   "max_connections": 2000,
-  "timeout": 300,
+  "timeout": 600,
   "udp_gateway": "127.0.0.1:7300",
+  "mtu": 1500,
+  "optimization": {
+    "mobile": {
+      "enabled": true,
+      "compression": true,
+      "tcp_nodelay": true,
+      "fast_open": true
+    }
+  },
+  "qos": {
+    "enabled": true,
+    "priority_ports": [53, 443, 80, 8080],
+    "dscp": 46
+  },
   "authentication": {
     "enabled": true,
     "user_db_file": "/etc/udp/users.db"
   },
   "logging": {
     "enabled": true,
-    "level": "debug",
+    "level": "info",
     "file": "/var/log/udp-custom.log"
   },
   "rate_limit": {
     "enabled": true,
     "connections_per_ip": 100,
-    "packets_per_second": 1000
+    "packets_per_second": 2000,
+    "bandwidth_limit_bytes": 0
   },
   "security": {
     "allow_ip_ranges": [
