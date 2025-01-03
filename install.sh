@@ -79,6 +79,10 @@ install_services() {
     # Create log file
     touch /var/log/udp-custom.log
     chmod 644 /var/log/udp-custom.log
+    chown root:root /var/log/udp-custom.log
+    
+    # Clear old log
+    echo "" > /var/log/udp-custom.log
     
     # Reload systemd
     systemctl daemon-reload

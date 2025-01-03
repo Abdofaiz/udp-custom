@@ -28,7 +28,8 @@
     "level": "info",
     "file": "/var/log/udp-custom.log",
     "connection_log": true,
-    "include_user_info": true
+    "include_user_info": true,
+    "log_format": "[%timestamp%] %user% - %ip% - %action%"
   },
   "rate_limit": {
     "enabled": true,

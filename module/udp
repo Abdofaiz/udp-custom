@@ -13,6 +13,14 @@ SERVICE_NAME="udp-custom"
 LOGS_FILE="/var/log/udp-custom.log"
 BINARY_PATH="/usr/local/bin/udp-custom"
 
+# Add this function at the beginning of the file
+log_connection() {
+    local username="$1"
+    local ip="$2"
+    local action="$3"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $username - $ip - $action" >> "/var/log/udp-custom.log"
+}
+
 # Add service verification
 verify_installation() {
     if [ ! -f "$BINARY_PATH" ]; then
@@ -184,47 +192,53 @@ monitor_performance() {
     free -m
 }
 
-# Improved show online users function
+# Simplified show online users function
 show_online_users() {
     show_banner
     echo -e "\n${GREEN}Online Users${NC}"
     echo -e "━━━━━━━━━━━━━━━━━━━━"
-    echo -e "Username\tIP Address\tConnected Since\tConnections"
+    echo -e "Username\tIP Address\tConnections\tStatus"
     echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     
+    # Check if netstat is available
+    if ! command -v netstat &> /dev/null; then
+        echo -e "${RED}Error: netstat command not found. Installing net-tools...${NC}"
+        apt-get update && apt-get install -y net-tools
+    fi
+
     # Get all established connections
-    connections=$(netstat -tn | grep :36712 | grep ESTABLISHED)
+    CONNECTIONS=$(netstat -ntu | grep :36712 | grep ESTABLISHED)
     
-    if [ -z "$connections" ]; then
+    if [ -z "$CONNECTIONS" ]; then
         echo -e "${YELLOW}No users currently online${NC}"
         return
     fi
-    
-    echo "$connections" | while read line; do
-        ip=$(echo $line | awk '{print $5}' | cut -d: -f1)
-        pid=$(netstat -tnp | grep :36712 | grep $ip | awk '{print $7}' | cut -d/ -f1 | head -1)
+
+    # Process each unique IP
+    echo "$CONNECTIONS" | awk '{print $5}' | cut -d: -f1 | sort -u | while read -r ip; do
+        # Count connections for this IP
+        conn_count=$(echo "$CONNECTIONS" | grep -c "$ip")
         
-        if [ -n "$pid" ]; then
-            connected_time=$(ps -o etime= -p $pid | xargs)
-        else
-            connected_time="N/A"
-        fi
-        
-        conn_count=$(echo "$connections" | grep $ip | wc -l)
-        
-        # Try to find username from logs
+        # Find username from users.db
         username="Unknown"
         if [ -f "/etc/udp/users.db" ]; then
             while IFS=: read -r user pass expiry; do
-                if grep -q "$user.*$ip" /var/log/udp-custom.log 2>/dev/null; then
-                    username=$user
+                if [ -f "/var/log/udp-custom.log" ] && grep -q "$user.*$ip" "/var/log/udp-custom.log"; then
+                    username="$user"
                     break
                 fi
             done < "/etc/udp/users.db"
         fi
         
-        echo -e "$username\t$ip\t$connected_time\t$conn_count"
-    done | sort | uniq
+        # Check if connection is active
+        if netstat -ntu | grep -q "$ip.*ESTABLISHED"; then
+            status="${GREEN}Active${NC}"
+        else
+            status="${RED}Inactive${NC}"
+        fi
+        
+        echo -e "$username\t$ip\t$conn_count\t$status"
+    done
 }
 
 # Main menu
