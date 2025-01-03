@@ -33,6 +33,119 @@ install_services() {
     mkdir -p /etc/udp
     mkdir -p /var/log/udp-custom
     
+    # Create Python settings files for gaming
+    cat > /etc/udp/settings.py <<EOL
+class GameUDPSettings:
+    def __init__(self):
+        # Optimized gaming ports
+        self.GAME_PORTS = {
+            'pubg': [10012, 17500],    # PUBG Mobile ports
+            'fifa': [3659, 14000],     # FIFA ports
+            'general': [7100, 7200, 7300]  # BadVPN default ports
+        }
+        
+        # Gaming optimized settings
+        self.GAMING_CONFIG = {
+            'buffer_size': 4096,
+            'timeout': 3,
+            'keepalive': 2,
+            'priority_queue': True,
+            'max_latency': 100,
+        }
+EOL
+
+    # Create gaming handler
+    cat > /etc/udp/gaming_handler.py <<EOL
+import socket
+import threading
+import time
+from settings import GameUDPSettings
+
+class GameUDPHandler:
+    def __init__(self):
+        self.active = True
+        self.sockets = {}
+        self.settings = GameUDPSettings()
+        self.GAME_PORTS = self.settings.GAME_PORTS
+        
+    def setup_gaming_ports(self):
+        for game, ports in self.GAME_PORTS.items():
+            for port in ports:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 65535)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 65535)
+                sock.setsockopt(socket.IPPROTO_UDP, socket.SO_REUSEADDR, 1)
+                sock.bind(('0.0.0.0', port))
+                sock.setblocking(False)
+                self.sockets[port] = sock
+                print(f"[+] Optimized gaming port {port} for {game}")
+
+    def process_game_packet(self, data, addr, port):
+        self.sockets[port].sendto(data, addr)
+
+    def handle_game_traffic(self, port):
+        sock = self.sockets[port]
+        while self.active:
+            try:
+                data, addr = sock.recvfrom(4096)
+                if data:
+                    self.process_game_packet(data, addr, port)
+            except BlockingIOError:
+                time.sleep(0.001)
+            except Exception as e:
+                print(f"[-] Error on port {port}: {e}")
+
+    def start(self):
+        try:
+            print("[*] Starting optimized UDP handler for games")
+            print("[*] Configured for: PUBG, FIFA")
+            print("[*] Using BadVPN ports: 7100, 7200, 7300")
+            
+            self.setup_gaming_ports()
+            
+            for port in self.sockets:
+                thread = threading.Thread(target=self.handle_game_traffic, args=(port,))
+                thread.daemon = True
+                thread.start()
+                
+            while self.active:
+                time.sleep(1)
+                
+        except KeyboardInterrupt:
+            self.shutdown()
+    
+    def shutdown(self):
+        self.active = False
+        for sock in self.sockets.values():
+            sock.close()
+        print("\n[*] Shutting down UDP handler...")
+
+if __name__ == "__main__":
+    handler = GameUDPHandler()
+    handler.start()
+EOL
+
+    # Create gaming service
+    cat > /etc/systemd/system/udp-gaming.service <<EOL
+[Unit]
+Description=UDP Gaming Optimization Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /etc/udp/gaming_handler.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOL
+
+    # Set permissions
+    chmod 644 /etc/udp/settings.py
+    chmod 644 /etc/udp/gaming_handler.py
+    chmod 644 /etc/systemd/system/udp-gaming.service
+    
     # Copy and set permissions for binary
     cp bin/udp-custom-linux-amd64 /usr/local/bin/udp-custom
     chmod +x /usr/local/bin/udp-custom
@@ -127,6 +240,18 @@ start_services() {
     else
         log "UDP Custom service failed to start. Check logs with: journalctl -u udp-custom"
     fi
+    
+    # Start gaming service
+    log "Starting UDP Gaming service..."
+    systemctl enable udp-gaming
+    systemctl start udp-gaming || log "Failed to start UDP Gaming service"
+    
+    # Verify gaming service
+    if systemctl is-active --quiet udp-gaming; then
+        log "UDP Gaming service started successfully"
+    else
+        log "UDP Gaming service failed to start. Check logs with: journalctl -u udp-gaming"
+    fi
 }
 
 # Add this function to optimize system
@@ -153,6 +278,13 @@ net.ipv4.udp_rmem_min = 8192
 net.ipv4.udp_wmem_min = 8192
 net.core.netdev_max_backlog = 100000
 net.ipv4.udp_mem = 8192 87380 33554432
+
+# Gaming optimizations
+net.ipv4.tcp_fin_timeout = 30
+net.ipv4.tcp_keepalive_time = 1200
+net.ipv4.tcp_max_syn_backlog = 100000
+net.ipv4.tcp_max_tw_buckets = 100000
+net.ipv4.ip_local_port_range = 1024 65535
 EOL
 
     # Apply sysctl settings
