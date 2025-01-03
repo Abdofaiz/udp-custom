@@ -198,7 +198,7 @@ show_online_users() {
     if [ -z "$connections" ]; then
         echo -e "${YELLOW}No users currently online${NC}"
         return
-    }
+    fi
     
     echo "$connections" | while read line; do
         ip=$(echo $line | awk '{print $5}' | cut -d: -f1)
