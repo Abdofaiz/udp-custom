@@ -184,6 +184,32 @@ monitor_performance() {
     free -m
 }
 
+# Add this function to show online users
+show_online_users() {
+    show_banner
+    echo -e "\n${GREEN}Online Users${NC}"
+    echo -e "━━━━━━━━━━━━━━━━━━━━"
+    echo -e "Username\tIP Address\tConnected Since\tConnections"
+    echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    # Get all established connections
+    netstat -tn | grep :36712 | grep ESTABLISHED | while read line; do
+        ip=$(echo $line | awk '{print $5}' | cut -d: -f1)
+        connected_time=$(date -d @$(stat -c %Y /proc/$(netstat -tnp | grep $ip | awk '{print $7}' | cut -d/ -f1)) '+%H:%M:%S')
+        conn_count=$(netstat -tn | grep $ip | wc -l)
+        
+        # Try to find username from connection
+        if [ -f "/etc/udp/users.db" ]; then
+            while IFS=: read -r user pass expiry; do
+                if grep -q "$user" "/var/log/udp-custom.log" | grep "$ip"; then
+                    echo -e "$user\t$ip\t$connected_time\t$conn_count"
+                    break
+                fi
+            done < "/etc/udp/users.db"
+        fi
+    done
+}
+
 # Main menu
 show_menu() {
     show_banner
@@ -196,6 +222,7 @@ show_menu() {
     echo -e " ${GREEN}[6]${NC} • Change Port"
     echo -e " ${GREEN}[7]${NC} • Debug Service"
     echo -e " ${GREEN}[8]${NC} • Monitor Performance"
+    echo -e " ${GREEN}[9]${NC} • Show Online Users"
     echo -e " ${GREEN}[0]${NC} • Exit"
     echo -e ""
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -217,6 +244,7 @@ main() {
             6) change_port ;;
             7) debug_service ;;
             8) monitor_performance ;;
+            9) show_online_users ;;
             0) exit 0 ;;
             *) echo -e "${RED}Invalid option!${NC}" ;;
         esac

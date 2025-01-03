@@ -26,7 +26,9 @@
   "logging": {
     "enabled": true,
     "level": "info",
-    "file": "/var/log/udp-custom.log"
+    "file": "/var/log/udp-custom.log",
+    "connection_log": true,
+    "include_user_info": true
   },
   "rate_limit": {
     "enabled": true,

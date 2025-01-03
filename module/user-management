@@ -107,6 +107,36 @@ extend_user() {
     fi
 }
 
+# Add this function to show online users
+show_online() {
+    show_banner
+    echo -e "\n${GREEN}Online Users${NC}"
+    echo -e "━━━━━━━━━━━━━━━━━━━━"
+    echo -e "Username\tIP Address\tConnections\tBandwidth"
+    echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    # Read user database
+    while IFS=: read -r user pass expiry; do
+        # Get connections for this user
+        connections=$(netstat -tn | grep :36712 | grep ESTABLISHED | wc -l)
+        if [ $connections -gt 0 ]; then
+            # Get IP addresses
+            ip_list=$(netstat -tn | grep :36712 | grep ESTABLISHED | awk '{print $5}' | cut -d: -f1 | sort -u)
+            for ip in $ip_list; do
+                # Get bandwidth usage (if available)
+                rx_bytes=$(iptables -nvx -L | grep $ip | awk '{print $2}')
+                tx_bytes=$(iptables -nvx -L | grep $ip | awk '{print $3}')
+                if [ -n "$rx_bytes" ] && [ -n "$tx_bytes" ]; then
+                    bandwidth="↓$(($rx_bytes/1024))KB ↑$(($tx_bytes/1024))KB"
+                else
+                    bandwidth="N/A"
+                fi
+                echo -e "$user\t$ip\t$connections\t$bandwidth"
+            done
+        fi
+    done < "$USER_DB"
+}
+
 # Main menu
 show_menu() {
     show_banner
@@ -115,6 +145,7 @@ show_menu() {
     echo -e " ${GREEN}[2]${NC} • Delete User"
     echo -e " ${GREEN}[3]${NC} • List Users"
     echo -e " ${GREEN}[4]${NC} • Extend User"
+    echo -e " ${GREEN}[5]${NC} • Show Online Users"
     echo -e " ${GREEN}[0]${NC} • Exit"
     echo -e ""
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -136,6 +167,7 @@ main() {
             2) delete_user ;;
             3) list_users ;;
             4) extend_user ;;
+            5) show_online ;;
             0) exit 0 ;;
             *) echo -e "${RED}Invalid option${NC}" ;;
         esac
