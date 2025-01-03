@@ -184,7 +184,7 @@ monitor_performance() {
     free -m
 }
 
-# Add this function to show online users
+# Improved show online users function
 show_online_users() {
     show_banner
     echo -e "\n${GREEN}Online Users${NC}"
@@ -193,21 +193,38 @@ show_online_users() {
     echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     
     # Get all established connections
-    netstat -tn | grep :36712 | grep ESTABLISHED | while read line; do
+    connections=$(netstat -tn | grep :36712 | grep ESTABLISHED)
+    
+    if [ -z "$connections" ]; then
+        echo -e "${YELLOW}No users currently online${NC}"
+        return
+    }
+    
+    echo "$connections" | while read line; do
         ip=$(echo $line | awk '{print $5}' | cut -d: -f1)
-        connected_time=$(date -d @$(stat -c %Y /proc/$(netstat -tnp | grep $ip | awk '{print $7}' | cut -d/ -f1)) '+%H:%M:%S')
-        conn_count=$(netstat -tn | grep $ip | wc -l)
+        pid=$(netstat -tnp | grep :36712 | grep $ip | awk '{print $7}' | cut -d/ -f1 | head -1)
         
-        # Try to find username from connection
+        if [ -n "$pid" ]; then
+            connected_time=$(ps -o etime= -p $pid | xargs)
+        else
+            connected_time="N/A"
+        fi
+        
+        conn_count=$(echo "$connections" | grep $ip | wc -l)
+        
+        # Try to find username from logs
+        username="Unknown"
         if [ -f "/etc/udp/users.db" ]; then
             while IFS=: read -r user pass expiry; do
-                if grep -q "$user" "/var/log/udp-custom.log" | grep "$ip"; then
-                    echo -e "$user\t$ip\t$connected_time\t$conn_count"
+                if grep -q "$user.*$ip" /var/log/udp-custom.log 2>/dev/null; then
+                    username=$user
                     break
                 fi
             done < "/etc/udp/users.db"
         fi
-    done
+        
+        echo -e "$username\t$ip\t$connected_time\t$conn_count"
+    done | sort | uniq
 }
 
 # Main menu

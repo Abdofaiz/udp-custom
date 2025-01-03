@@ -93,6 +93,17 @@ install_services() {
     touch /etc/udp/users.conf
     chmod 644 /etc/udp/users.db
     chmod 644 /etc/udp/users.conf
+    
+    # Setup iptables monitoring
+    iptables -N udp-custom 2>/dev/null
+    iptables -F udp-custom
+    iptables -A INPUT -p tcp --dport 36712 -j udp-custom
+    
+    # Save iptables rules
+    if command -v iptables-save >/dev/null 2>&1; then
+        iptables-save > /etc/iptables.rules
+        echo "iptables-restore < /etc/iptables.rules" >> /etc/rc.local
+    fi
 }
 
 start_services() {

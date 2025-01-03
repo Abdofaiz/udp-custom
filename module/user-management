@@ -49,6 +49,9 @@ add_user() {
     echo -e "Username   : $username"
     echo -e "Password   : $password"
     echo -e "Expires on : $expiry_date"
+
+    # Add bandwidth monitoring for the new user
+    monitor_bandwidth "$ip" "$username"
 }
 
 # Delete user
@@ -107,34 +110,70 @@ extend_user() {
     fi
 }
 
-# Add this function to show online users
+# Add this function to show online users with better detection
 show_online() {
     show_banner
     echo -e "\n${GREEN}Online Users${NC}"
     echo -e "━━━━━━━━━━━━━━━━━━━━"
-    echo -e "Username\tIP Address\tConnections\tBandwidth"
-    echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo -e "Username\tIP Address\tConnections\tBandwidth Usage"
+    echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     
-    # Read user database
-    while IFS=: read -r user pass expiry; do
-        # Get connections for this user
-        connections=$(netstat -tn | grep :36712 | grep ESTABLISHED | wc -l)
-        if [ $connections -gt 0 ]; then
-            # Get IP addresses
-            ip_list=$(netstat -tn | grep :36712 | grep ESTABLISHED | awk '{print $5}' | cut -d: -f1 | sort -u)
-            for ip in $ip_list; do
-                # Get bandwidth usage (if available)
-                rx_bytes=$(iptables -nvx -L | grep $ip | awk '{print $2}')
-                tx_bytes=$(iptables -nvx -L | grep $ip | awk '{print $3}')
-                if [ -n "$rx_bytes" ] && [ -n "$tx_bytes" ]; then
-                    bandwidth="↓$(($rx_bytes/1024))KB ↑$(($tx_bytes/1024))KB"
-                else
-                    bandwidth="N/A"
-                fi
-                echo -e "$user\t$ip\t$connections\t$bandwidth"
-            done
+    # Create iptables rules if not exists
+    if ! iptables -L INPUT -v -n | grep -q "udp-custom"; then
+        iptables -N udp-custom 2>/dev/null
+        iptables -A INPUT -p tcp --dport 36712 -j udp-custom
+    fi
+
+    # Get all established connections
+    connections=$(netstat -tn | grep :36712 | grep ESTABLISHED)
+    
+    if [ -z "$connections" ]; then
+        echo -e "${YELLOW}No users currently online${NC}"
+        return
+    fi
+
+    # Process each connection
+    echo "$connections" | while read line; do
+        ip=$(echo $line | awk '{print $5}' | cut -d: -f1)
+        conn_count=$(echo "$connections" | grep $ip | wc -l)
+        
+        # Get bandwidth usage
+        rx_bytes=$(iptables -nvx -L udp-custom | grep $ip | awk '{print $2}')
+        tx_bytes=$(iptables -nvx -L udp-custom | grep $ip | awk '{print $3}')
+        
+        # Convert bytes to readable format
+        if [ -n "$rx_bytes" ] && [ -n "$tx_bytes" ]; then
+            rx_mb=$(echo "scale=2; $rx_bytes/1048576" | bc)
+            tx_mb=$(echo "scale=2; $tx_bytes/1048576" | bc)
+            bandwidth="↓${rx_mb}MB ↑${tx_mb}MB"
+        else
+            bandwidth="N/A"
         fi
-    done < "$USER_DB"
+        
+        # Try to find username from connection
+        username="Unknown"
+        if [ -f "$USER_DB" ]; then
+            while IFS=: read -r user pass expiry; do
+                if grep -q "$user.*$ip" /var/log/udp-custom.log 2>/dev/null; then
+                    username=$user
+                    break
+                fi
+            done < "$USER_DB"
+        fi
+        
+        echo -e "$username\t$ip\t$conn_count\t$bandwidth"
+    done | sort | uniq
+}
+
+# Add bandwidth monitoring function
+monitor_bandwidth() {
+    local ip=$1
+    local user=$2
+    
+    # Create iptables rule for the IP if not exists
+    if ! iptables -L udp-custom -v -n | grep -q "$ip"; then
+        iptables -A udp-custom -s "$ip" -j RETURN
+    fi
 }
 
 # Main menu
