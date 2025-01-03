@@ -29,6 +29,36 @@ install_dependencies() {
 install_services() {
     log "Installing UDP services..."
     
+    # Install BadVPN
+    log "Installing BadVPN..."
+    apt-get install -y cmake make gcc
+    cd /usr/src/
+    wget https://github.com/ambrop72/badvpn/archive/refs/tags/1.999.130.tar.gz
+    tar xf 1.999.130.tar.gz
+    cd badvpn-1.999.130/
+    cmake -DBUILD_NOTHING_BY_DEFAULT=1 -DBUILD_UDPGW=1
+    make install
+    
+    # Create BadVPN service
+    cat > /etc/systemd/system/badvpn.service <<EOL
+[Unit]
+Description=BadVPN UDPGW Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/bin/badvpn-udpgw --listen-addr 127.0.0.1:7300 --max-clients 1000 --max-connections-for-client 10 --client-socket-sndbuf 10000
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOL
+
+    # Set permissions
+    chmod 644 /etc/systemd/system/badvpn.service
+    
     # Create necessary directories
     mkdir -p /etc/udp
     mkdir -p /var/log/udp-custom
@@ -225,6 +255,19 @@ EOL
 
 start_services() {
     log "Starting services..."
+    
+    # Start BadVPN
+    log "Starting BadVPN service..."
+    systemctl enable badvpn
+    systemctl start badvpn || log "Failed to start BadVPN service"
+    
+    # Verify BadVPN service
+    if systemctl is-active --quiet badvpn; then
+        log "BadVPN service started successfully"
+    else
+        log "BadVPN service failed to start. Check logs with: journalctl -u badvpn"
+    fi
+    
     systemctl enable udpgw
     systemctl enable udp-custom
     
@@ -285,6 +328,11 @@ net.ipv4.tcp_keepalive_time = 1200
 net.ipv4.tcp_max_syn_backlog = 100000
 net.ipv4.tcp_max_tw_buckets = 100000
 net.ipv4.ip_local_port_range = 1024 65535
+
+# BadVPN optimizations
+net.ipv4.ip_forward = 1
+net.ipv4.conf.all.rp_filter = 0
+net.ipv4.conf.default.rp_filter = 0
 EOL
 
     # Apply sysctl settings
