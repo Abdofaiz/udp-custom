@@ -1,0 +1,204 @@
+#!/bin/bash
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+# Default values
+DEFAULT_BUFFER="67108864"  # 64MB
+DEFAULT_SPEED="100"        # 100Mbps
+
+# Function to convert sizes
+convert_size() {
+    local size=$1
+    local unit=$2
+    
+    case $unit in
+        "MB")
+            echo $((size * 1024 * 1024))
+            ;;
+        "GB")
+            echo $((size * 1024 * 1024 * 1024))
+            ;;
+        "Mbps")
+            echo $((size * 1024 * 1024 / 8))
+            ;;
+        "Gbps")
+            echo $((size * 1024 * 1024 * 1024 / 8))
+            ;;
+    esac
+}
+
+# Function to apply UDP settings
+apply_udp_settings() {
+    local buffer_size=$1
+    local tx_speed=$2
+    local rx_speed=$3
+
+    # Update UDP config
+    cat > /etc/udp/config.json <<EOL
+{
+    "listen": ":36712",
+    "stream_buffer": ${buffer_size},
+    "receive_buffer": ${buffer_size},
+    "max_connections": 2000,
+    "timeout": 600,
+    "udp_gateway": "127.0.0.1:7300",
+    "mtu": 1500,
+    "optimization": {
+        "mobile": {
+            "enabled": true,
+            "compression": true,
+            "tcp_nodelay": true,
+            "fast_open": true
+        }
+    },
+    "qos": {
+        "enabled": true,
+        "priority_ports": [53, 443, 80, 8080],
+        "dscp": 46
+    },
+    "transfer": {
+        "tx_speed": ${tx_speed},
+        "rx_speed": ${rx_speed},
+        "auto_adjust": true,
+        "buffer_split": true
+    }
+}
+EOL
+
+    # Apply kernel parameters
+    cat > /etc/sysctl.d/99-udp-tune.conf <<EOL
+# UDP Buffer Sizes
+net.core.rmem_max = ${buffer_size}
+net.core.wmem_max = ${buffer_size}
+net.core.rmem_default = ${buffer_size}
+net.core.wmem_default = ${buffer_size}
+
+# UDP Memory
+net.ipv4.udp_mem = 8192 87380 ${buffer_size}
+net.ipv4.udp_rmem_min = 8192
+net.ipv4.udp_wmem_min = 8192
+
+# TCP Optimization
+net.ipv4.tcp_fastopen = 3
+net.ipv4.tcp_slow_start_after_idle = 0
+net.ipv4.tcp_max_tw_buckets = 2000000
+net.ipv4.tcp_tw_reuse = 1
+
+# Network Device Queue
+net.core.netdev_max_backlog = 100000
+net.core.dev_weight = 64
+EOL
+
+    sysctl -p /etc/sysctl.d/99-udp-tune.conf
+}
+
+# Main menu
+udp_tweak_menu() {
+    clear
+    echo -e "${GREEN}=============================${NC}"
+    echo -e "     UDP Tweaking Settings"
+    echo -e "${GREEN}=============================${NC}"
+    echo -e "Current Settings:"
+    echo -e "Buffer Size: $(cat /etc/udp/config.json | grep stream_buffer | awk '{print $2}' | tr -d ',')"
+    echo -e "TX Speed: $(cat /etc/udp/config.json | grep tx_speed | awk '{print $2}' | tr -d ',')"
+    echo -e "RX Speed: $(cat /etc/udp/config.json | grep rx_speed | awk '{print $2}' | tr -d ',')"
+    echo -e "${GREEN}=============================${NC}"
+    echo -e "1. Set Buffer Size"
+    echo -e "2. Set Transfer Speed"
+    echo -e "3. Apply Gaming Profile"
+    echo -e "4. Apply Streaming Profile"
+    echo -e "5. Apply Custom Profile"
+    echo -e "6. Reset to Default"
+    echo -e "7. Exit"
+    echo -e "${GREEN}=============================${NC}"
+    
+    read -p "Select option [1-7]: " option
+
+    case $option in
+        1)
+            echo -e "\nSelect Buffer Size Unit:"
+            echo "1. MB (Megabytes)"
+            echo "2. GB (Gigabytes)"
+            read -p "Select unit [1-2]: " unit_choice
+            read -p "Enter size: " size
+
+            case $unit_choice in
+                1) buffer_size=$(convert_size $size "MB");;
+                2) buffer_size=$(convert_size $size "GB");;
+                *) buffer_size=$DEFAULT_BUFFER;;
+            esac
+
+            apply_udp_settings $buffer_size $(convert_size 100 "Mbps") $(convert_size 100 "Mbps")
+            echo -e "${GREEN}Buffer size updated!${NC}"
+            ;;
+        2)
+            echo -e "\nSelect Speed Unit:"
+            echo "1. Mbps (Megabits per second)"
+            echo "2. Gbps (Gigabits per second)"
+            read -p "Select unit [1-2]: " speed_unit
+            read -p "Enter TX speed: " tx
+            read -p "Enter RX speed: " rx
+
+            case $speed_unit in
+                1)
+                    tx_speed=$(convert_size $tx "Mbps")
+                    rx_speed=$(convert_size $rx "Mbps")
+                    ;;
+                2)
+                    tx_speed=$(convert_size $tx "Gbps")
+                    rx_speed=$(convert_size $rx "Gbps")
+                    ;;
+                *)
+                    tx_speed=$(convert_size 100 "Mbps")
+                    rx_speed=$(convert_size 100 "Mbps")
+                    ;;
+            esac
+
+            apply_udp_settings $DEFAULT_BUFFER $tx_speed $rx_speed
+            echo -e "${GREEN}Transfer speeds updated!${NC}"
+            ;;
+        3)
+            # Gaming Profile
+            apply_udp_settings $(convert_size 128 "MB") $(convert_size 1 "Gbps") $(convert_size 1 "Gbps")
+            echo -e "${GREEN}Gaming profile applied!${NC}"
+            ;;
+        4)
+            # Streaming Profile
+            apply_udp_settings $(convert_size 256 "MB") $(convert_size 2 "Gbps") $(convert_size 2 "Gbps")
+            echo -e "${GREEN}Streaming profile applied!${NC}"
+            ;;
+        5)
+            # Custom Profile
+            read -p "Enter buffer size (MB): " custom_buffer
+            read -p "Enter TX speed (Mbps): " custom_tx
+            read -p "Enter RX speed (Mbps): " custom_rx
+            
+            apply_udp_settings $(convert_size $custom_buffer "MB") \
+                              $(convert_size $custom_tx "Mbps") \
+                              $(convert_size $custom_rx "Mbps")
+            echo -e "${GREEN}Custom profile applied!${NC}"
+            ;;
+        6)
+            apply_udp_settings $DEFAULT_BUFFER $(convert_size 100 "Mbps") $(convert_size 100 "Mbps")
+            echo -e "${GREEN}Settings reset to default!${NC}"
+            ;;
+        7)
+            exit 0
+            ;;
+        *)
+            echo -e "${RED}Invalid option${NC}"
+            ;;
+    esac
+
+    # Restart UDP service
+    systemctl restart udp-custom
+    echo -e "${YELLOW}UDP service restarted with new settings${NC}"
+}
+
+# Run menu
+udp_tweak_menu 
