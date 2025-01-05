@@ -11,9 +11,12 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-# Install dependencies
+# Update system
 apt update
-apt install -y wget curl git cmake make gcc net-tools
+apt upgrade -y
+
+# Install dependencies for Ubuntu 20.04
+apt install -y wget curl git cmake make gcc net-tools build-essential
 
 # Install BadVPN
 cd /usr/src/
@@ -43,7 +46,7 @@ Restart=always
 WantedBy=multi-user.target
 EOL
 
-# Download UDP Custom
+# Download UDP Custom binary for Ubuntu 20.04
 cd /root
 wget -O /usr/local/bin/udp-custom https://raw.githubusercontent.com/abdofaiz/udp-custom/main/bin/udp-custom-linux-amd64
 chmod +x /usr/local/bin/udp-custom
@@ -94,3 +97,9 @@ echo "Checking services status..."
 systemctl status badvpn --no-pager
 systemctl status udp-custom --no-pager
 netstat -tulpn | grep -E '36712|7300'
+
+# Show installation complete message
+echo -e "${GREEN}UDP Custom installation completed!${NC}"
+echo -e "BadVPN Port: 7300"
+echo -e "UDP Custom Port: 36712"
+echo -e "Check status with: systemctl status udp-custom"
