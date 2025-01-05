@@ -1,5 +1,5 @@
 [Unit]
-Description=UDP Custom Service by Abdofaiz
+Description=UDP Custom Service
 After=network.target
 
 [Service]
@@ -9,9 +9,6 @@ WorkingDirectory=/etc/udp
 ExecStart=/usr/local/bin/udp-custom server --config /etc/udp/config.json
 Restart=always
 RestartSec=3
-LimitNOFILE=1000000
-StandardOutput=journal
-StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
