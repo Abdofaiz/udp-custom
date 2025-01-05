@@ -67,20 +67,31 @@ EOL
     cat > /etc/udp/settings.py <<EOL
 class GameUDPSettings:
     def __init__(self):
-        # Optimized gaming ports
         self.GAME_PORTS = {
-            'pubg': [10012, 17500],    # PUBG Mobile ports
-            'fifa': [3659, 14000],     # FIFA ports
-            'general': [7100, 7200, 7300]  # BadVPN default ports
+            'pubg': {
+                'ports': [10012, 17500],
+                'buffer': 8192,         # Larger buffer for PUBG
+                'max_latency': 150      # Higher latency tolerance
+            },
+            'fifa': {
+                'ports': [3659, 14000],
+                'buffer': 4096,         # Standard buffer
+                'max_latency': 80       # Lower latency requirement
+            },
+            'general': {
+                'ports': [7100, 7200, 7300],
+                'buffer': 4096,
+                'max_latency': 100
+            }
         }
         
-        # Gaming optimized settings
         self.GAMING_CONFIG = {
-            'buffer_size': 4096,
             'timeout': 3,
             'keepalive': 2,
             'priority_queue': True,
-            'max_latency': 100,
+            'qos_enabled': True,        # Added QoS
+            'packet_compression': True,  # Added compression
+            'fast_open': True           # TCP fast open
         }
 EOL
 
