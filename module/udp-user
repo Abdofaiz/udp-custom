@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+# User database file
+USER_DB="/etc/udp/users.db"
+
+# Create user function
+create_user() {
+    read -p "Enter username: " username
+    read -p "Enter password: " password
+    echo "${username}:${password}" >> $USER_DB
+    echo -e "${GREEN}User created successfully${NC}"
+}
+
+# Delete user function
+delete_user() {
+    read -p "Enter username to delete: " username
+    sed -i "/^${username}:/d" $USER_DB
+    echo -e "${GREEN}User deleted successfully${NC}"
+}
+
+# List users function
+list_users() {
+    echo -e "${YELLOW}Current Users:${NC}"
+    cat $USER_DB
+}
+
+# User management menu
+user_menu() {
+    clear
+    echo -e "${GREEN}=============================${NC}"
+    echo -e "    UDP User Management"
+    echo -e "${GREEN}=============================${NC}"
+    echo -e "1. Create User"
+    echo -e "2. Delete User"
+    echo -e "3. List Users"
+    echo -e "4. Exit"
+    echo -e "${GREEN}=============================${NC}"
+    read -p "Select option [1-4]: " option
+
+    case $option in
+        1) create_user ;;
+        2) delete_user ;;
+        3) list_users ;;
+        4) exit ;;
+        *) echo -e "${RED}Invalid option${NC}" ;;
+    esac
+}
+
+# Initialize user database
+touch $USER_DB
+
+# Run menu
+user_menu 

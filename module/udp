@@ -4,285 +4,36 @@
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Configuration paths
-CONFIG_DIR="/etc/udp"
-SERVICE_NAME="udp-custom"
-LOGS_FILE="/var/log/udp-custom.log"
-BINARY_PATH="/usr/local/bin/udp-custom"
-
-# Add this function at the beginning of the file
-log_connection() {
-    local username="$1"
-    local ip="$2"
-    local action="$3"
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $username - $ip - $action" >> "/var/log/udp-custom.log"
-}
-
-# Add service verification
-verify_installation() {
-    if [ ! -f "$BINARY_PATH" ]; then
-        echo -e "${RED}Error: UDP Custom binary not found!${NC}"
-        exit 1
-    fi
-    
-    if [ ! -f "/etc/systemd/system/$SERVICE_NAME.service" ]; then
-        echo -e "${RED}Error: Service file not found!${NC}"
-        exit 1
-    fi
-    
-    if [ ! -f "$CONFIG_DIR/config.json" ]; then
-        echo -e "${RED}Error: Configuration file not found!${NC}"
-        exit 1
-    fi
-}
-
-# Add this function after verify_installation()
-debug_service() {
-    echo -e "\n${YELLOW}Debugging UDP Custom Service${NC}"
-    echo -e "----------------------------------------"
-    
-    # Check binary
-    if [ -x "$BINARY_PATH" ]; then
-        echo -e "Binary permissions: $(ls -l $BINARY_PATH)"
-    else
-        echo -e "${RED}Binary not executable!${NC}"
-    fi
-    
-    # Check config
-    if [ -r "$CONFIG_DIR/config.json" ]; then
-        echo -e "Config permissions: $(ls -l $CONFIG_DIR/config.json)"
-        echo -e "Config contents:"
-        cat "$CONFIG_DIR/config.json"
-    else
-        echo -e "${RED}Config not readable!${NC}"
-    fi
-    
-    # Check service definition
-    echo -e "\nService definition:"
-    cat "/etc/systemd/system/$SERVICE_NAME.service"
-    
-    # Check system logs
-    echo -e "\nSystem logs:"
-    journalctl -u $SERVICE_NAME -n 20 --no-pager
-}
-
-# Banner
-show_banner() {
+# UDP Command function
+udp_menu() {
     clear
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "                UDP Custom Manager by Abdofaiz"
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GREEN}=============================${NC}"
+    echo -e "       UDP Custom Menu"
+    echo -e "${GREEN}=============================${NC}"
+    echo -e "1. Start UDP Custom"
+    echo -e "2. Stop UDP Custom"
+    echo -e "3. Restart UDP Custom"
+    echo -e "4. Check UDP Status"
+    echo -e "5. Check UDP Ports"
+    echo -e "6. Exit"
+    echo -e "${GREEN}=============================${NC}"
+    read -p "Select option [1-6]: " option
+
+    case $option in
+        1) systemctl start udp-custom; systemctl start badvpn ;;
+        2) systemctl stop udp-custom; systemctl stop badvpn ;;
+        3) systemctl restart udp-custom; systemctl restart badvpn ;;
+        4) 
+            systemctl status udp-custom --no-pager
+            systemctl status badvpn --no-pager
+            ;;
+        5) netstat -tulpn | grep -E '36712|7300' ;;
+        6) exit ;;
+        *) echo -e "${RED}Invalid option${NC}" ;;
+    esac
 }
 
-# Check if running as root
-check_root() {
-    if [[ $EUID -ne 0 ]]; then
-        echo -e "${RED}Error: This script must be run as root!${NC}"
-        exit 1
-    fi
-}
-
-# Service status with enhanced checking
-check_status() {
-    verify_installation
-    
-    echo -e "Checking UDP Custom service status..."
-    echo -e "----------------------------------------"
-    
-    # Check binary
-    echo -e "Binary: $(if [ -f "$BINARY_PATH" ]; then echo -e "${GREEN}Found${NC}"; else echo -e "${RED}Not Found${NC}"; fi)"
-    
-    # Check configuration
-    echo -e "Config: $(if [ -f "$CONFIG_DIR/config.json" ]; then echo -e "${GREEN}Found${NC}"; else echo -e "${RED}Not Found${NC}"; fi)"
-    
-    # Check service status
-    if systemctl is-active --quiet $SERVICE_NAME; then
-        echo -e "Service: ${GREEN}Running${NC}"
-        echo -e "Port: $(grep -oP '"listen": ":\K[0-9]+' $CONFIG_DIR/config.json)"
-        echo -e "Process: $(ps aux | grep udp-custom | grep -v grep)"
-    else
-        echo -e "Service: ${RED}Not Running${NC}"
-        echo -e "Last logs:"
-        journalctl -u $SERVICE_NAME -n 5 --no-pager
-    fi
-}
-
-# Enhanced start service
-start_service() {
-    verify_installation
-    echo -e "Starting UDP Custom service..."
-    systemctl start $SERVICE_NAME
-    sleep 2
-    if ! systemctl is-active --quiet $SERVICE_NAME; then
-        echo -e "${RED}Failed to start service. Checking logs:${NC}"
-        journalctl -u $SERVICE_NAME -n 10 --no-pager
-    else
-        echo -e "${GREEN}Service started successfully${NC}"
-    fi
-    check_status
-}
-
-# Enhanced stop service
-stop_service() {
-    echo -e "Stopping UDP Custom service..."
-    systemctl stop $SERVICE_NAME
-    sleep 2
-    if systemctl is-active --quiet $SERVICE_NAME; then
-        echo -e "${RED}Failed to stop service${NC}"
-    else
-        echo -e "${GREEN}Service stopped successfully${NC}"
-    fi
-    check_status
-}
-
-# Enhanced restart service
-restart_service() {
-    echo -e "Restarting UDP Custom service..."
-    systemctl restart $SERVICE_NAME
-    sleep 2
-    if ! systemctl is-active --quiet $SERVICE_NAME; then
-        echo -e "${RED}Failed to restart service. Checking logs:${NC}"
-        journalctl -u $SERVICE_NAME -n 10 --no-pager
-    else
-        echo -e "${GREEN}Service restarted successfully${NC}"
-    fi
-    check_status
-}
-
-# Show logs
-show_logs() {
-    if [[ -f $LOGS_FILE ]]; then
-        tail -n 50 $LOGS_FILE
-    else
-        echo -e "${RED}Log file not found!${NC}"
-    fi
-}
-
-# Change port
-change_port() {
-    read -p "Enter new port (1-65535): " new_port
-    if [[ $new_port =~ ^[0-9]+$ ]] && [ $new_port -ge 1 ] && [ $new_port -le 65535 ]; then
-        sed -i "s/\"listen\": \":[0-9]*\"/\"listen\": \":$new_port\"/" $CONFIG_DIR/config.json
-        restart_service
-        echo -e "${GREEN}Port changed to $new_port${NC}"
-    else
-        echo -e "${RED}Invalid port number!${NC}"
-    fi
-}
-
-# Add this function
-monitor_performance() {
-    show_banner
-    echo -e "\n${GREEN}Performance Monitor${NC}"
-    echo -e "━━━━━━━━━━━━━━━━━━━━"
-    
-    echo -e "Current Connections:"
-    netstat -an | grep :36712 | grep ESTABLISHED | wc -l
-    
-    echo -e "\nBandwidth Usage:"
-    iftop -N -n -P -t -s 5 2>/dev/null
-    
-    echo -e "\nSystem Load:"
-    uptime
-    
-    echo -e "\nMemory Usage:"
-    free -m
-}
-
-# Simplified show online users function
-show_online_users() {
-    show_banner
-    echo -e "\n${GREEN}Online Users${NC}"
-    echo -e "━━━━━━━━━━━━━━━━━━━━"
-    echo -e "Username\tIP Address\tConnections\tStatus"
-    echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    
-    # Check if netstat is available
-    if ! command -v netstat &> /dev/null; then
-        echo -e "${RED}Error: netstat command not found. Installing net-tools...${NC}"
-        apt-get update && apt-get install -y net-tools
-    fi
-
-    # Get all established connections
-    CONNECTIONS=$(netstat -ntu | grep :36712 | grep ESTABLISHED)
-    
-    if [ -z "$CONNECTIONS" ]; then
-        echo -e "${YELLOW}No users currently online${NC}"
-        return
-    fi
-
-    # Process each unique IP
-    echo "$CONNECTIONS" | awk '{print $5}' | cut -d: -f1 | sort -u | while read -r ip; do
-        # Count connections for this IP
-        conn_count=$(echo "$CONNECTIONS" | grep -c "$ip")
-        
-        # Find username from users.db
-        username="Unknown"
-        if [ -f "/etc/udp/users.db" ]; then
-            while IFS=: read -r user pass expiry; do
-                if [ -f "/var/log/udp-custom.log" ] && grep -q "$user.*$ip" "/var/log/udp-custom.log"; then
-                    username="$user"
-                    break
-                fi
-            done < "/etc/udp/users.db"
-        fi
-        
-        # Check if connection is active
-        if netstat -ntu | grep -q "$ip.*ESTABLISHED"; then
-            status="${GREEN}Active${NC}"
-        else
-            status="${RED}Inactive${NC}"
-        fi
-        
-        echo -e "$username\t$ip\t$conn_count\t$status"
-    done
-}
-
-# Main menu
-show_menu() {
-    show_banner
-    echo -e ""
-    echo -e " ${GREEN}[1]${NC} • Start Service"
-    echo -e " ${GREEN}[2]${NC} • Stop Service"
-    echo -e " ${GREEN}[3]${NC} • Restart Service"
-    echo -e " ${GREEN}[4]${NC} • Show Status"
-    echo -e " ${GREEN}[5]${NC} • Show Logs"
-    echo -e " ${GREEN}[6]${NC} • Change Port"
-    echo -e " ${GREEN}[7]${NC} • Debug Service"
-    echo -e " ${GREEN}[8]${NC} • Monitor Performance"
-    echo -e " ${GREEN}[9]${NC} • Show Online Users"
-    echo -e " ${GREEN}[0]${NC} • Exit"
-    echo -e ""
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e ""
-}
-
-# Main function
-main() {
-    check_root
-    while true; do
-        show_menu
-        read -p "Select menu: " choice
-        case $choice in
-            1) start_service ;;
-            2) stop_service ;;
-            3) restart_service ;;
-            4) check_status ;;
-            5) show_logs ;;
-            6) change_port ;;
-            7) debug_service ;;
-            8) monitor_performance ;;
-            9) show_online_users ;;
-            0) exit 0 ;;
-            *) echo -e "${RED}Invalid option!${NC}" ;;
-        esac
-        echo ""
-        read -p "Press enter to continue..."
-    done
-}
-
-# Execute main function
-main
+# Run menu
+udp_menu
